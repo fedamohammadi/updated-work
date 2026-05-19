@@ -231,3 +231,83 @@ def demo_categorical_plots() -> None:
     for cat, r in ratings.items():
         print(f"  {cat:<14}: {r:.3f}")
     print(f"\n  Saved -> {path}")
+
+
+# ==============================================================
+# 5. Relationship Plots: scatterplot, regplot, and pairplot
+# ==============================================================
+# scatterplot() is the seaborn scatter with hue, size, and style support.
+# regplot() adds an OLS fit line and a 95% confidence band in one call.
+# pairplot() creates a grid of pairwise scatter plots for all numeric
+# columns — the fastest multi-variable EDA tool when n_features is small.
+
+def demo_relationship_plots() -> None:
+    from scipy.stats import pearsonr
+
+    df = make_transactions_df()
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+
+    sns.scatterplot(data=df, x="discount", y="sales", hue="category",
+                    ax=axes[0], alpha=0.55, s=35, palette="muted")
+    axes[0].set_title("Sales vs Discount (by Category)")
+    axes[0].set_xlabel("Discount")
+    axes[0].set_ylabel("Sales ($)")
+    axes[0].legend(title="Category", fontsize=8)
+
+    sns.regplot(data=df, x="units", y="sales", ax=axes[1],
+                scatter_kws={"alpha": 0.35, "s": 22, "color": "steelblue"},
+                line_kws={"color": "tomato", "linewidth": 2})
+    axes[1].set_title("Sales vs Units Sold (OLS Fit)")
+    axes[1].set_xlabel("Units Sold")
+    axes[1].set_ylabel("Sales ($)")
+
+    plt.tight_layout()
+    path = os.path.join(PLOT_DIR, "13_05_relationship_plots.png")
+    fig.savefig(path, dpi=120)
+    plt.close(fig)
+
+    r_disc, p_disc = pearsonr(df["discount"], df["sales"])
+    r_unit, p_unit = pearsonr(df["units"],    df["sales"])
+    print(f"\n  Pearson r (sales vs discount): r={r_disc:.3f}  p={p_disc:.4f}")
+    print(f"  Pearson r (sales vs units):    r={r_unit:.3f}  p={p_unit:.4f}")
+    print(f"\n  Saved -> {path}")
+
+
+# ==============================================================
+# 6. Heatmaps
+# ==============================================================
+# sns.heatmap() visualises a matrix with colour intensity — most
+# commonly a correlation matrix or an aggregated pivot table.
+# annot=True prints the numeric value inside each cell.
+# cmap="coolwarm" is the standard for correlations: red = strong
+# positive, blue = strong negative, white = near zero.
+# center=0, vmin=-1, vmax=1 anchors the colour scale correctly.
+
+def demo_heatmaps() -> None:
+    df = make_transactions_df()
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+
+    corr = df[["sales", "units", "discount", "rating"]].corr()
+    sns.heatmap(corr, annot=True, fmt=".2f", cmap="coolwarm",
+                center=0, vmin=-1, vmax=1,
+                linewidths=0.5, square=True, ax=axes[0])
+    axes[0].set_title("Pearson Correlation Matrix")
+
+    pivot = df.pivot_table(values="sales", index="category",
+                           columns="region", aggfunc="mean")
+    sns.heatmap(pivot, annot=True, fmt=".0f", cmap="YlOrRd",
+                linewidths=0.5, ax=axes[1])
+    axes[1].set_title("Avg Sales: Category × Region")
+
+    plt.tight_layout()
+    path = os.path.join(PLOT_DIR, "13_06_heatmaps.png")
+    fig.savefig(path, dpi=120)
+    plt.close(fig)
+
+    print(f"\n  Correlation matrix:")
+    print(corr.round(3).to_string())
+    print(f"\n  Avg sales by category × region:")
+    print(pivot.round(0).to_string())
+    print(f"\n  Saved -> {path}")
