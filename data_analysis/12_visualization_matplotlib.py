@@ -247,3 +247,54 @@ def demo_scatter_plots() -> None:
 
     print(f"\n  Electronics OLS trend: slope={m:+.1f} $/month  intercept=${b:.0f}")
     print(f"\n  Saved -> {path}")
+
+
+# ==============================================================
+# 5. Histograms and Density Curves
+# ==============================================================
+# A histogram bins continuous values to show distribution shape.
+# density=True normalises the y-axis to a probability density (area
+# integrates to 1), enabling direct overlay with a KDE or normal PDF.
+# gaussian_kde from scipy provides a non-parametric smooth estimate;
+# norm.pdf plots the normal reference curve.
+
+def demo_histograms() -> None:
+    df = make_monthly_df()
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Left: single histogram + KDE + normal PDF for all sales
+    sales = df["sales"].values
+    axes[0].hist(sales, bins=25, density=True,
+                 color="steelblue", alpha=0.55, edgecolor="white", label="Histogram")
+    xs  = np.linspace(sales.min(), sales.max(), 300)
+    kde = gaussian_kde(sales)
+    axes[0].plot(xs, kde(xs), color="tomato",   linewidth=2.0, label="KDE")
+    mu, sigma = sales.mean(), sales.std()
+    axes[0].plot(xs, norm.pdf(xs, mu, sigma), color="seagreen", linewidth=2.0,
+                 linestyle="--", label=f"Normal(μ={mu:.0f})")
+    axes[0].set_title("Distribution of All Monthly Sales")
+    axes[0].set_xlabel("Sales ($)")
+    axes[0].set_ylabel("Density")
+    axes[0].legend()
+
+    # Right: overlapping histograms for two categories
+    for cat, col in [("Electronics", "steelblue"), ("Books", "tomato")]:
+        vals = df[df["category"] == cat]["sales"].values
+        axes[1].hist(vals, bins=16, density=True,
+                     color=col, alpha=0.45, edgecolor="white", label=cat)
+    axes[1].set_title("Electronics vs Books Distribution")
+    axes[1].set_xlabel("Sales ($)")
+    axes[1].set_ylabel("Density")
+    axes[1].legend()
+
+    plt.tight_layout()
+    path = os.path.join(PLOT_DIR, "12_05_histograms.png")
+    fig.savefig(path, dpi=120)
+    plt.close(fig)
+
+    print(f"\n  Overall sales: mean=${mu:.0f}  std=${sigma:.0f}  skew={df['sales'].skew():.3f}")
+    for cat in ["Electronics", "Books"]:
+        vals = df[df["category"] == cat]["sales"]
+        print(f"  {cat:<14}: mean=${vals.mean():.0f}  std=${vals.std():.0f}")
+    print(f"\n  Saved -> {path}")
