@@ -137,3 +137,97 @@ def demo_distribution_plots() -> None:
         vals = df[df["category"] == cat]["sales"]
         print(f"  {cat:>14} | {vals.mean():>8.0f} | {vals.std():>8.0f} | {vals.skew():>7.3f}")
     print(f"\n  Saved -> {path}")
+
+
+# ==============================================================
+# 3. Box Plots and Violin Plots
+# ==============================================================
+# A box plot shows the five-number summary (Q1, median, Q3, whiskers)
+# and marks individual outliers as points. It is compact and reliable.
+# A violin plot adds the full KDE shape on both sides of the axis,
+# revealing bimodality or asymmetry that a box plot would hide.
+# Use boxplot for quick outlier identification; violinplot when the
+# distribution shape (not just quartiles) matters for the analysis.
+
+def demo_box_violin() -> None:
+    df = make_transactions_df()
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+
+    sns.boxplot(data=df, x="category", y="sales", ax=axes[0],
+                palette="muted",
+                flierprops={"marker": "x", "markersize": 4})
+    axes[0].set_title("Sales Box Plot by Category")
+    axes[0].set_xlabel("Category")
+    axes[0].set_ylabel("Sales ($)")
+    for tick in axes[0].get_xticklabels():
+        tick.set_rotation(20)
+
+    sns.violinplot(data=df, x="category", y="sales", ax=axes[1],
+                   palette="muted", inner="quartile", linewidth=1.2)
+    axes[1].set_title("Sales Violin Plot by Category")
+    axes[1].set_xlabel("Category")
+    axes[1].set_ylabel("Sales ($)")
+    for tick in axes[1].get_xticklabels():
+        tick.set_rotation(20)
+
+    plt.tight_layout()
+    path = os.path.join(PLOT_DIR, "13_03_box_violin.png")
+    fig.savefig(path, dpi=120)
+    plt.close(fig)
+
+    print(f"\n  {'Category':>14} | {'Q1':>7} | {'Median':>7} | {'Q3':>7} | Outliers")
+    print(f"  {'-'*14}-+-{'-'*7}-+-{'-'*7}-+-{'-'*7}-+-{'-'*8}")
+    for cat in sorted(df["category"].unique()):
+        vals = df[df["category"] == cat]["sales"]
+        q1, med, q3 = vals.quantile(0.25), vals.median(), vals.quantile(0.75)
+        iqr  = q3 - q1
+        out  = int(((vals < q1 - 1.5 * iqr) | (vals > q3 + 1.5 * iqr)).sum())
+        print(f"  {cat:>14} | {q1:>7.0f} | {med:>7.0f} | {q3:>7.0f} | {out:>8}")
+    print(f"\n  Saved -> {path}")
+
+
+# ==============================================================
+# 4. Categorical Plots: barplot and countplot
+# ==============================================================
+# barplot() shows the mean of a numeric variable per category and adds
+# a 95% bootstrap confidence interval — ideal for comparing group means.
+# countplot() tallies the number of rows per category, equivalent to
+# a bar chart of value_counts(). The hue= parameter splits bars by a
+# second categorical variable and places them side by side automatically.
+
+def demo_categorical_plots() -> None:
+    df = make_transactions_df()
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+
+    order = (df.groupby("category")["rating"]
+               .mean()
+               .sort_values(ascending=False)
+               .index)
+    sns.barplot(data=df, x="category", y="rating", order=order,
+                errorbar="ci", capsize=0.12, ax=axes[0], palette="muted")
+    axes[0].set_title("Avg Rating by Category (95% CI)")
+    axes[0].set_xlabel("Category")
+    axes[0].set_ylabel("Rating")
+    axes[0].set_ylim(0, 5.5)
+    for tick in axes[0].get_xticklabels():
+        tick.set_rotation(20)
+
+    sns.countplot(data=df, x="region", hue="category",
+                  ax=axes[1], palette="muted")
+    axes[1].set_title("Transaction Count by Region and Category")
+    axes[1].set_xlabel("Region")
+    axes[1].set_ylabel("Count")
+    axes[1].legend(title="Category", fontsize=8, loc="upper right")
+
+    plt.tight_layout()
+    path = os.path.join(PLOT_DIR, "13_04_categorical_plots.png")
+    fig.savefig(path, dpi=120)
+    plt.close(fig)
+
+    print(f"\n  Average rating by category:")
+    ratings = df.groupby("category")["rating"].mean().sort_values(ascending=False)
+    for cat, r in ratings.items():
+        print(f"  {cat:<14}: {r:.3f}")
+    print(f"\n  Saved -> {path}")
