@@ -255,3 +255,73 @@ def demo_grouped_stats() -> None:
                    .mean()
                    .max())
     print(f"\n  Highest average sales: {top_combo[0]} / {top_combo[1]}  ({top_val:.2f})")
+
+
+# ==============================================================
+# 7. Practical EDA Pipeline
+# ==============================================================
+
+def demo_eda_pipeline() -> None:
+    df = make_sales_df()
+
+    print(f"\n  Step 1: shape and column overview")
+    print(f"  {df.shape[0]} rows × {df.shape[1]} columns")
+    print()
+    for col in df.columns:
+        dtype    = str(df[col].dtype)
+        n_unique = df[col].nunique(dropna=False)
+        n_miss   = int(df[col].isnull().sum())
+        print(f"  {col:<12}: dtype={dtype:<15} unique={n_unique:>4}  missing={n_miss}")
+
+    print(f"\n  Step 2: numeric summaries")
+    print(df.describe(include="number").round(2).to_string())
+
+    print(f"\n  Step 3: categorical frequencies")
+    for col in ["category", "region"]:
+        vc = df[col].value_counts()
+        print(f"  {col}: {vc.to_dict()}")
+
+    print(f"\n  Step 4: missing value counts")
+    miss = df.isnull().sum()
+    miss = miss[miss > 0]
+    print(miss.to_string() if len(miss) else "  No missing values.")
+
+    print(f"\n  Step 5: strongest correlation")
+    corr     = df.select_dtypes("number").corr().abs()
+    upper    = corr.where(np.triu(np.ones(corr.shape, dtype=bool), k=1))
+    max_pair = upper.stack().idxmax()
+    max_r    = upper.stack().max()
+    print(f"  {max_pair[0]} vs {max_pair[1]}  |r| = {max_r:.3f}")
+
+    print(f"\n  Dataset is ready for feature engineering or modelling.")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. Descriptive Statistics")
+    demo_descriptive_stats()
+
+    section("2. Distribution Shape: Skewness and Kurtosis")
+    demo_distribution_shape()
+
+    section("3. Missing Data Summary")
+    demo_missing_data()
+
+    section("4. Correlation Analysis")
+    demo_correlation()
+
+    section("5. Value Counts and Frequency Tables")
+    demo_value_counts()
+
+    section("6. Grouped Statistics")
+    demo_grouped_stats()
+
+    section("7. Practical EDA Pipeline")
+    demo_eda_pipeline()
+
+
+if __name__ == "__main__":
+    main()
