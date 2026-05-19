@@ -110,3 +110,48 @@ def demo_distribution_shape() -> None:
     print()
     print(f"  Shapiro-Wilk test on 'sales': W={stat:.4f}  p={p:.4f}")
     print(f"  {'Normally distributed' if p > 0.05 else 'Deviates from normal'} at the 5% level.")
+
+
+# ==============================================================
+# 3. Missing Data Summary
+# ==============================================================
+# Before modelling, count and locate missing values column by column.
+# A column with > 30 % missing is often dropped; < 5 % can be imputed.
+# Checking whether missingness concentrates in particular groups
+# (e.g., a single category always missing ratings) reveals non-random
+# patterns that may signal a data collection problem.
+
+def demo_missing_data() -> None:
+    df = make_sales_df()
+
+    miss_count = df.isnull().sum()
+    miss_pct   = df.isnull().mean() * 100
+
+    print(f"\n  Missing value summary:")
+    print(f"  {'Column':>12} | {'Count':>7} | {'%':>7} | Suggested action")
+    print(f"  {'-'*12}-+-{'-'*7}-+-{'-'*7}-+-{'-'*22}")
+
+    for col in df.columns:
+        count = int(miss_count[col])
+        pct   = miss_pct[col]
+        if pct == 0:
+            action = "no action needed"
+        elif pct < 5:
+            action = "impute (low rate)"
+        elif pct < 30:
+            action = "impute carefully"
+        else:
+            action = "consider dropping"
+        print(f"  {col:>12} | {count:>7} | {pct:>7.1f} | {action}")
+
+    # Are missing ratings concentrated in any single category?
+    miss_by_cat = (df.groupby("category")["rating"]
+                   .apply(lambda s: int(s.isnull().sum()))
+                   .rename("n_missing"))
+    print(f"\n  Missing ratings by category:")
+    print(miss_by_cat.to_string())
+
+    # Median imputation example
+    df["rating_filled"] = df["rating"].fillna(df["rating"].median())
+    still_missing = int(df["rating_filled"].isnull().sum())
+    print(f"\n  After median imputation: {still_missing} missing values remain in 'rating'.")
