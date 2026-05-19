@@ -341,3 +341,117 @@ def demo_subplots() -> None:
     print(f"  sharex=True: all panels share the same date range on the x-axis.")
     print(f"  fill_between: shaded area highlights volume under each series.")
     print(f"  Saved -> {path}")
+
+
+# ==============================================================
+# 7. Practical Example: EDA Dashboard
+# ==============================================================
+
+def demo_eda_dashboard() -> None:
+    df              = make_monthly_df()
+    total_by_month  = df.groupby("month")["sales"].sum().reset_index()
+    avg_by_cat      = df.groupby("category")["sales"].mean().sort_values(ascending=False)
+    elec            = df[df["category"] == "Electronics"].sort_values("month")
+
+    fig = plt.figure(figsize=(14, 9))
+    gs  = fig.add_gridspec(2, 3, hspace=0.42, wspace=0.36)
+
+    # Panel 1 (top-left, 2-column wide): total sales line chart
+    ax1 = fig.add_subplot(gs[0, :2])
+    ax1.plot(total_by_month["month"], total_by_month["sales"],
+             color="steelblue", linewidth=2)
+    ax1.fill_between(total_by_month["month"], total_by_month["sales"],
+                     alpha=0.12, color="steelblue")
+    ax1.set_title("Total Monthly Sales (All Categories)")
+    ax1.set_ylabel("Sales ($)")
+    ax1.yaxis.set_major_formatter(
+        mticker.FuncFormatter(lambda v, _: f"${v/1000:.0f}k"))
+    plt.setp(ax1.get_xticklabels(), rotation=25, ha="right")
+
+    # Panel 2 (top-right): horizontal category bar chart
+    ax2 = fig.add_subplot(gs[0, 2])
+    ax2.barh(avg_by_cat.index, avg_by_cat.values, color="tomato", edgecolor="white")
+    ax2.set_title("Avg Sales by Category")
+    ax2.set_xlabel("Avg Sales ($)")
+    ax2.xaxis.set_major_formatter(
+        mticker.FuncFormatter(lambda v, _: f"${v:,.0f}"))
+
+    # Panel 3 (bottom-left): Electronics histogram
+    ax3 = fig.add_subplot(gs[1, 0])
+    ax3.hist(elec["sales"].values, bins=15, color="seagreen", alpha=0.7, edgecolor="white")
+    ax3.set_title("Electronics Distribution")
+    ax3.set_xlabel("Sales ($)")
+    ax3.set_ylabel("Count")
+
+    # Panel 4 (bottom-middle): scatter of total sales by month index
+    ax4 = fig.add_subplot(gs[1, 1])
+    ax4.scatter(range(len(total_by_month)), total_by_month["sales"],
+                color="darkorange", s=55)
+    ax4.set_title("Total Sales Scatter")
+    ax4.set_xlabel("Month index")
+    ax4.set_ylabel("Sales ($)")
+    ax4.yaxis.set_major_formatter(
+        mticker.FuncFormatter(lambda v, _: f"${v/1000:.0f}k"))
+
+    # Panel 5 (bottom-right): month-over-month growth bars
+    total_by_month["growth"] = total_by_month["sales"].pct_change() * 100
+    bar_colors = ["seagreen" if g >= 0 else "tomato"
+                  for g in total_by_month["growth"].fillna(0)]
+    ax5 = fig.add_subplot(gs[1, 2])
+    ax5.bar(range(len(total_by_month)), total_by_month["growth"].fillna(0),
+            color=bar_colors)
+    ax5.axhline(0, color="black", linewidth=0.8)
+    ax5.set_title("Month-over-Month Growth (%)")
+    ax5.set_xlabel("Month index")
+    ax5.set_ylabel("Growth (%)")
+
+    fig.suptitle("Sales EDA Dashboard", fontsize=15, fontweight="bold")
+
+    path = os.path.join(PLOT_DIR, "12_07_eda_dashboard.png")
+    fig.savefig(path, dpi=120, bbox_inches="tight")
+    plt.close(fig)
+
+    avg_growth = total_by_month["growth"].dropna().mean()
+    print(f"\n  Dashboard: 5 panels in a 2×3 GridSpec layout.")
+    print(f"  Panel 1: total monthly sales line (spans 2 columns).")
+    print(f"  Panel 2: horizontal bar chart of average sales by category.")
+    print(f"  Panel 3: Electronics monthly sales histogram.")
+    print(f"  Panel 4: total sales scatter by month index.")
+    print(f"  Panel 5: month-over-month growth (green = positive, red = negative).")
+    print(f"  Average MoM growth: {avg_growth:+.2f}%")
+    print(f"\n  Saved -> {path}")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    os.makedirs(PLOT_DIR, exist_ok=True)
+
+    section("1. The Figure and Axes API")
+    demo_figure_axes()
+
+    section("2. Line Plots and Time Series")
+    demo_line_plots()
+
+    section("3. Bar Charts")
+    demo_bar_charts()
+
+    section("4. Scatter Plots")
+    demo_scatter_plots()
+
+    section("5. Histograms and Density Curves")
+    demo_histograms()
+
+    section("6. Subplots and Multi-Panel Layout")
+    demo_subplots()
+
+    section("7. Practical Example: EDA Dashboard")
+    demo_eda_dashboard()
+
+    print(f"\n  All plots saved to: {PLOT_DIR}")
+
+
+if __name__ == "__main__":
+    main()
