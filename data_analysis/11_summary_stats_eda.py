@@ -45,3 +45,68 @@ def make_sales_df() -> pd.DataFrame:
     df.loc[rng.choice(n, 10, replace=False), "rating"]   = np.nan
     df.loc[rng.choice(n, 5,  replace=False), "discount"] = np.nan
     return df
+
+
+# ==============================================================
+# 1. Descriptive Statistics
+# ==============================================================
+# The five-number summary (min, Q1, median, Q3, max) plus mean and
+# std give a compact picture of each numeric column. pandas describe()
+# computes all of these in one call. Use it on any new dataset first.
+# Comparing mean vs. median reveals skew: a large positive gap means
+# a right tail is pulling the mean up.
+
+def demo_descriptive_stats() -> None:
+    df      = make_sales_df()
+    numeric = ["sales", "units", "discount", "rating"]
+
+    print(f"\n  Dataset shape: {df.shape[0]} rows × {df.shape[1]} columns")
+    print(f"  Date range:    {df['date'].min().date()} to {df['date'].max().date()}")
+    print()
+    print("  describe() output (numeric columns):")
+    print(df[numeric].describe().round(3).to_string())
+
+    print()
+    print(f"  {'Column':>10} | {'Mean':>8} | {'Median':>8} | {'Gap':>8}")
+    print(f"  {'-'*10}-+-{'-'*8}-+-{'-'*8}-+-{'-'*8}")
+    for col in numeric:
+        col_data = df[col].dropna()
+        mean     = col_data.mean()
+        median   = col_data.median()
+        print(f"  {col:>10} | {mean:>8.3f} | {median:>8.3f} | {mean - median:>+8.3f}")
+
+
+# ==============================================================
+# 2. Distribution Shape: Skewness and Kurtosis
+# ==============================================================
+# Skewness measures asymmetry: > 0 = right tail, < 0 = left tail.
+# |skew| > 1 is usually considered substantial.
+# Excess kurtosis measures tail weight relative to a normal distribution;
+# > 0 means heavier tails and more likely extreme values.
+# Coefficient of variation (CV = std / mean) compares spread across
+# columns that live on different scales.
+
+def demo_distribution_shape() -> None:
+    df      = make_sales_df()
+    numeric = ["sales", "units", "discount", "rating"]
+
+    print(f"\n  {'Column':>10} | {'Skewness':>9} | {'Ex. Kurt':>9} | {'CV (%)':>8} | Shape")
+    print(f"  {'-'*10}-+-{'-'*9}-+-{'-'*9}-+-{'-'*8}-+-{'-'*20}")
+
+    for col in numeric:
+        vals = df[col].dropna()
+        skew = float(vals.skew())
+        kurt = float(vals.kurtosis())
+        cv   = vals.std() / vals.mean() * 100 if vals.mean() != 0 else float("nan")
+        if abs(skew) < 0.5:
+            shape = "roughly symmetric"
+        elif skew > 0:
+            shape = "right-skewed"
+        else:
+            shape = "left-skewed"
+        print(f"  {col:>10} | {skew:>9.4f} | {kurt:>9.4f} | {cv:>8.2f} | {shape}")
+
+    stat, p = stats.shapiro(df["sales"].dropna())
+    print()
+    print(f"  Shapiro-Wilk test on 'sales': W={stat:.4f}  p={p:.4f}")
+    print(f"  {'Normally distributed' if p > 0.05 else 'Deviates from normal'} at the 5% level.")
