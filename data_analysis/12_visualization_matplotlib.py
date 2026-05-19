@@ -139,3 +139,111 @@ def demo_line_plots() -> None:
         change = (last - first) / first * 100
         print(f"  {cat:<14}: ${first:>7,.0f} -> ${last:>7,.0f}  ({change:>+.1f}%)")
     print(f"\n  Saved -> {path}")
+
+
+# ==============================================================
+# 3. Bar Charts
+# ==============================================================
+# Bar charts compare magnitudes across discrete categories.
+# A grouped bar chart places bars for multiple series side by side
+# using a manual x-offset computed from np.arange(). bar_label()
+# adds value labels directly on each bar without manual positioning.
+# Horizontal bars (barh) work better when category names are long.
+
+def demo_bar_charts() -> None:
+    df = make_monthly_df()
+
+    avg_sales = (df.groupby("category")["sales"]
+                   .mean()
+                   .sort_values(ascending=False))
+    df["half"] = df["month"].dt.month.apply(lambda m: "H1" if m <= 6 else "H2")
+    pivot      = df.groupby(["category", "half"])["sales"].mean().unstack()
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+
+    # Left: single-category bar with data labels
+    bars = axes[0].bar(avg_sales.index, avg_sales.values,
+                       color=["steelblue", "tomato", "seagreen", "darkorange"],
+                       edgecolor="white", linewidth=0.8)
+    axes[0].bar_label(bars, fmt="$%.0f", padding=4, fontsize=9)
+    axes[0].set_title("Average Monthly Sales by Category")
+    axes[0].set_ylabel("Avg Sales ($)")
+    axes[0].set_ylim(0, avg_sales.max() * 1.22)
+    axes[0].yaxis.set_major_formatter(
+        mticker.FuncFormatter(lambda v, _: f"${v:,.0f}"))
+
+    # Right: grouped bar chart — H1 vs H2
+    x     = np.arange(len(pivot))
+    width = 0.35
+    axes[1].bar(x - width / 2, pivot["H1"], width, label="H1", color="steelblue")
+    axes[1].bar(x + width / 2, pivot["H2"], width, label="H2", color="tomato")
+    axes[1].set_xticks(x)
+    axes[1].set_xticklabels(pivot.index, rotation=15, ha="right")
+    axes[1].set_title("H1 vs H2 Average Sales")
+    axes[1].set_ylabel("Avg Sales ($)")
+    axes[1].legend()
+    axes[1].yaxis.set_major_formatter(
+        mticker.FuncFormatter(lambda v, _: f"${v:,.0f}"))
+
+    plt.tight_layout()
+    path = os.path.join(PLOT_DIR, "12_03_bar_charts.png")
+    fig.savefig(path, dpi=120)
+    plt.close(fig)
+
+    print(f"\n  Average monthly sales by category:")
+    print(avg_sales.round(0).to_string())
+    print(f"\n  H1 vs H2 averages:")
+    print(pivot.round(0).to_string())
+    print(f"\n  Saved -> {path}")
+
+
+# ==============================================================
+# 4. Scatter Plots
+# ==============================================================
+# A scatter plot reveals the relationship between two numeric variables.
+# Colour-coding a third variable adds an extra dimension without a
+# second axes. np.polyfit() fits a linear trend; plotting the resulting
+# line over the scatter shows whether the trend is strong or weak.
+
+def demo_scatter_plots() -> None:
+    df     = make_monthly_df()
+    cats   = sorted(df["category"].unique())
+    colors = ["steelblue", "tomato", "seagreen", "darkorange"]
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Left: Electronics scatter + OLS trend line
+    elec  = df[df["category"] == "Electronics"].sort_values("month")
+    x_num = np.arange(len(elec))
+    y     = elec["sales"].values
+    m, b  = np.polyfit(x_num, y, 1)
+    axes[0].scatter(x_num, y, color="steelblue", s=55, zorder=3, label="Monthly sales")
+    axes[0].plot(x_num, m * x_num + b, color="tomato", linewidth=2,
+                 linestyle="--", label=f"Trend (+${m:.0f}/mo)")
+    axes[0].set_title("Electronics Sales: Scatter + Trend")
+    axes[0].set_xlabel("Month index")
+    axes[0].set_ylabel("Sales ($)")
+    axes[0].legend()
+    axes[0].yaxis.set_major_formatter(
+        mticker.FuncFormatter(lambda v, _: f"${v:,.0f}"))
+
+    # Right: all categories, colour-coded
+    for cat, col in zip(cats, colors):
+        sub   = df[df["category"] == cat].sort_values("month")
+        x_idx = np.arange(len(sub))
+        axes[1].scatter(x_idx, sub["sales"].values,
+                        color=col, s=40, alpha=0.75, label=cat)
+    axes[1].set_title("Sales by Category (Scatter)")
+    axes[1].set_xlabel("Month index")
+    axes[1].set_ylabel("Sales ($)")
+    axes[1].legend(title="Category", fontsize=9)
+    axes[1].yaxis.set_major_formatter(
+        mticker.FuncFormatter(lambda v, _: f"${v:,.0f}"))
+
+    plt.tight_layout()
+    path = os.path.join(PLOT_DIR, "12_04_scatter_plots.png")
+    fig.savefig(path, dpi=120)
+    plt.close(fig)
+
+    print(f"\n  Electronics OLS trend: slope={m:+.1f} $/month  intercept=${b:.0f}")
+    print(f"\n  Saved -> {path}")
