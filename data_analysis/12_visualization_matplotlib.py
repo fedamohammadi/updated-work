@@ -298,3 +298,46 @@ def demo_histograms() -> None:
         vals = df[df["category"] == cat]["sales"]
         print(f"  {cat:<14}: mean=${vals.mean():.0f}  std=${vals.std():.0f}")
     print(f"\n  Saved -> {path}")
+
+
+# ==============================================================
+# 6. Subplots and Multi-Panel Layout
+# ==============================================================
+# plt.subplots(nrows, ncols) creates a grid of Axes objects.
+# sharex=True links x-axes so zooming or panning one panel affects
+# all others in the column — useful for time series comparisons.
+# fill_between() adds a shaded area under the line for visual emphasis.
+# plt.setp() applies shared formatting (rotation) to a list of artists.
+
+def demo_subplots() -> None:
+    df     = make_monthly_df()
+    cats   = ["Electronics", "Clothing", "Books", "Home"]
+    colors = ["steelblue", "tomato", "seagreen", "darkorange"]
+
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=True)
+    axes_flat = axes.ravel()
+
+    for ax, cat, col in zip(axes_flat, cats, colors):
+        sub = df[df["category"] == cat].sort_values("month")
+        ax.plot(sub["month"], sub["sales"], color=col, linewidth=1.8)
+        ax.fill_between(sub["month"], sub["sales"], alpha=0.15, color=col)
+        ax.set_title(f"{cat}", fontweight="bold")
+        ax.set_ylabel("Sales ($)")
+        ax.yaxis.set_major_formatter(
+            mticker.FuncFormatter(lambda v, _: f"${v:,.0f}"))
+
+    # Rotate x-tick labels only on the bottom two panels
+    for ax in axes_flat[2:]:
+        plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
+
+    fig.suptitle("Monthly Sales by Category (2022–2023)", fontsize=14, fontweight="bold")
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+
+    path = os.path.join(PLOT_DIR, "12_06_subplots.png")
+    fig.savefig(path, dpi=120)
+    plt.close(fig)
+
+    print(f"\n  2×2 subplot grid: one panel per category.")
+    print(f"  sharex=True: all panels share the same date range on the x-axis.")
+    print(f"  fill_between: shaded area highlights volume under each series.")
+    print(f"  Saved -> {path}")
