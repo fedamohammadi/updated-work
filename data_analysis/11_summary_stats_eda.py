@@ -155,3 +155,63 @@ def demo_missing_data() -> None:
     df["rating_filled"] = df["rating"].fillna(df["rating"].median())
     still_missing = int(df["rating_filled"].isnull().sum())
     print(f"\n  After median imputation: {still_missing} missing values remain in 'rating'.")
+
+
+# ==============================================================
+# 4. Correlation Analysis
+# ==============================================================
+# Pearson r measures linear association; sensitive to outliers.
+# Spearman rho is rank-based: robust to outliers and non-linearity.
+# Both range from -1 (perfect negative) to +1 (perfect positive).
+# Correlations > 0.7 between features often cause multicollinearity
+# in regression — flag these before fitting any model.
+
+def demo_correlation() -> None:
+    df      = make_sales_df()
+    numeric = ["sales", "units", "discount", "rating"]
+
+    pearson  = df[numeric].corr(method="pearson")
+    spearman = df[numeric].corr(method="spearman")
+
+    print(f"\n  Pearson correlation matrix:")
+    print(pearson.round(3).to_string())
+    print(f"\n  Spearman correlation matrix:")
+    print(spearman.round(3).to_string())
+
+    print(f"\n  Notable Pearson correlations (|r| > 0.25):")
+    found = False
+    for i in range(len(numeric)):
+        for j in range(i + 1, len(numeric)):
+            r = pearson.loc[numeric[i], numeric[j]]
+            if abs(r) > 0.25:
+                direction = "positive" if r > 0 else "negative"
+                print(f"  {numeric[i]} vs {numeric[j]}: r={r:.3f}  ({direction})")
+                found = True
+    if not found:
+        print("  (none above threshold — features are weakly correlated)")
+
+
+# ==============================================================
+# 5. Value Counts and Frequency Tables
+# ==============================================================
+# For categorical columns, value_counts() replaces describe().
+# normalize=True converts counts to proportions for easy comparison.
+# pd.crosstab() shows how two categorical variables co-occur — it is
+# the exploratory version of a contingency table and highlights
+# imbalanced category × region combinations.
+
+def demo_value_counts() -> None:
+    df = make_sales_df()
+
+    for col in ["category", "region"]:
+        counts = df[col].value_counts()
+        pcts   = df[col].value_counts(normalize=True) * 100
+        print(f"\n  '{col}' distribution:")
+        print(f"  {'Level':>14} | {'Count':>6} | {'%':>6}")
+        print(f"  {'-'*14}-+-{'-'*6}-+-{'-'*6}")
+        for level in counts.index:
+            print(f"  {level:>14} | {int(counts[level]):>6} | {pcts[level]:>6.1f}")
+
+    ct = pd.crosstab(df["category"], df["region"])
+    print(f"\n  Cross-tabulation (category × region):")
+    print(ct.to_string())
