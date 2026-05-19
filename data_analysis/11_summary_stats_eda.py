@@ -215,3 +215,43 @@ def demo_value_counts() -> None:
     ct = pd.crosstab(df["category"], df["region"])
     print(f"\n  Cross-tabulation (category × region):")
     print(ct.to_string())
+
+
+# ==============================================================
+# 6. Grouped Statistics
+# ==============================================================
+# groupby().agg() computes multiple statistics per group in one call.
+# Comparing means across categories reveals which groups drive sales.
+# Adding std and count alongside the mean shows whether the mean is
+# reliable (high n, low std) or noisy (low n, high std).
+
+def demo_grouped_stats() -> None:
+    df = make_sales_df()
+
+    grp = (df.groupby("category")
+             .agg(
+                 n          = ("sales", "count"),
+                 sales_mean = ("sales", "mean"),
+                 sales_std  = ("sales", "std"),
+                 units_mean = ("units", "mean"),
+                 rating_mean= ("rating", "mean"),
+             )
+             .sort_values("sales_mean", ascending=False))
+
+    print(f"\n  Sales stats by category (sorted by mean sales):")
+    print(grp.round(2).to_string())
+
+    region_grp = (df.groupby("region")["sales"]
+                    .agg(["mean", "median", "std", "count"])
+                    .rename(columns={"mean": "avg", "std": "sd"})
+                    .sort_values("avg", ascending=False))
+    print(f"\n  Sales stats by region:")
+    print(region_grp.round(2).to_string())
+
+    top_combo = (df.groupby(["category", "region"])["sales"]
+                   .mean()
+                   .idxmax())
+    top_val   = (df.groupby(["category", "region"])["sales"]
+                   .mean()
+                   .max())
+    print(f"\n  Highest average sales: {top_combo[0]} / {top_combo[1]}  ({top_val:.2f})")
