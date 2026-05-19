@@ -155,7 +155,7 @@ def demo_box_violin() -> None:
     fig, axes = plt.subplots(1, 2, figsize=(13, 5))
 
     sns.boxplot(data=df, x="category", y="sales", ax=axes[0],
-                palette="muted",
+                hue="category", palette="muted", legend=False,
                 flierprops={"marker": "x", "markersize": 4})
     axes[0].set_title("Sales Box Plot by Category")
     axes[0].set_xlabel("Category")
@@ -164,7 +164,8 @@ def demo_box_violin() -> None:
         tick.set_rotation(20)
 
     sns.violinplot(data=df, x="category", y="sales", ax=axes[1],
-                   palette="muted", inner="quartile", linewidth=1.2)
+                   hue="category", palette="muted", legend=False,
+                   inner="quartile", linewidth=1.2)
     axes[1].set_title("Sales Violin Plot by Category")
     axes[1].set_xlabel("Category")
     axes[1].set_ylabel("Sales ($)")
@@ -206,7 +207,8 @@ def demo_categorical_plots() -> None:
                .sort_values(ascending=False)
                .index)
     sns.barplot(data=df, x="category", y="rating", order=order,
-                errorbar="ci", capsize=0.12, ax=axes[0], palette="muted")
+                hue="category", palette="muted", legend=False,
+                errorbar="ci", capsize=0.12, ax=axes[0])
     axes[0].set_title("Avg Rating by Category (95% CI)")
     axes[0].set_xlabel("Category")
     axes[0].set_ylabel("Rating")
@@ -311,3 +313,110 @@ def demo_heatmaps() -> None:
     print(f"\n  Avg sales by category × region:")
     print(pivot.round(0).to_string())
     print(f"\n  Saved -> {path}")
+
+
+# ==============================================================
+# 7. Practical Example: Multi-Panel Publication Figure
+# ==============================================================
+
+def demo_multi_panel_figure() -> None:
+    df = make_transactions_df()
+
+    fig = plt.figure(figsize=(14, 10))
+    gs  = fig.add_gridspec(2, 3, hspace=0.46, wspace=0.38)
+
+    # Panel 1 (top-left, 2-column wide): KDE per category
+    ax1 = fig.add_subplot(gs[0, :2])
+    sns.kdeplot(data=df, x="sales", hue="category", ax=ax1,
+                fill=True, alpha=0.22, linewidth=1.5)
+    ax1.set_title("Sales Distribution by Category")
+    ax1.set_xlabel("Sales ($)")
+
+    # Panel 2 (top-right): box plot of ratings
+    ax2 = fig.add_subplot(gs[0, 2])
+    sns.boxplot(data=df, x="category", y="rating", ax=ax2,
+                hue="category", palette="muted", legend=False)
+    ax2.set_title("Rating by Category")
+    ax2.set_xlabel("")
+    for tick in ax2.get_xticklabels():
+        tick.set_rotation(35)
+        tick.set_fontsize(8)
+
+    # Panel 3 (bottom-left): scatter + OLS line for sales vs discount
+    ax3 = fig.add_subplot(gs[1, 0])
+    sns.regplot(data=df, x="discount", y="sales", ax=ax3,
+                scatter_kws={"alpha": 0.28, "s": 18, "color": "steelblue"},
+                line_kws={"color": "tomato", "linewidth": 1.8})
+    ax3.set_title("Sales vs Discount")
+    ax3.set_xlabel("Discount")
+    ax3.set_ylabel("Sales ($)")
+
+    # Panel 4 (bottom-middle): mean sales barplot by region
+    region_order = (df.groupby("region")["sales"]
+                      .mean()
+                      .sort_values(ascending=False)
+                      .index)
+    ax4 = fig.add_subplot(gs[1, 1])
+    sns.barplot(data=df, x="region", y="sales", order=region_order,
+                hue="region", palette="muted", legend=False,
+                errorbar="ci", capsize=0.1, ax=ax4)
+    ax4.set_title("Avg Sales by Region")
+    ax4.set_xlabel("Region")
+    ax4.set_ylabel("Avg Sales ($)")
+
+    # Panel 5 (bottom-right): correlation heatmap
+    ax5 = fig.add_subplot(gs[1, 2])
+    corr = df[["sales", "units", "discount", "rating"]].corr()
+    sns.heatmap(corr, annot=True, fmt=".2f", cmap="coolwarm", center=0,
+                vmin=-1, vmax=1, linewidths=0.5, square=True, ax=ax5,
+                cbar_kws={"shrink": 0.75})
+    ax5.set_title("Correlation Matrix")
+
+    fig.suptitle("Retail Sales: Seaborn Multi-Panel EDA",
+                 fontsize=14, fontweight="bold")
+    path = os.path.join(PLOT_DIR, "13_07_multi_panel.png")
+    fig.savefig(path, dpi=120, bbox_inches="tight")
+    plt.close(fig)
+
+    print(f"\n  Multi-panel figure: 5 panels arranged in a 2×3 GridSpec.")
+    print(f"  Panel 1: KDE distributions per category (spans 2 columns).")
+    print(f"  Panel 2: box plot of ratings across categories.")
+    print(f"  Panel 3: scatter + OLS line for sales vs discount.")
+    print(f"  Panel 4: barplot of mean sales by region with 95% CI.")
+    print(f"  Panel 5: correlation heatmap of numeric features.")
+    print(f"  Saved -> {path}")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    os.makedirs(PLOT_DIR, exist_ok=True)
+
+    section("1. Seaborn vs. Matplotlib")
+    demo_seaborn_vs_matplotlib()
+
+    section("2. Distribution Plots: histplot and kdeplot")
+    demo_distribution_plots()
+
+    section("3. Box Plots and Violin Plots")
+    demo_box_violin()
+
+    section("4. Categorical Plots: barplot and countplot")
+    demo_categorical_plots()
+
+    section("5. Relationship Plots: scatterplot, regplot")
+    demo_relationship_plots()
+
+    section("6. Heatmaps")
+    demo_heatmaps()
+
+    section("7. Practical Example: Multi-Panel Publication Figure")
+    demo_multi_panel_figure()
+
+    print(f"\n  All plots saved to: {PLOT_DIR}")
+
+
+if __name__ == "__main__":
+    main()
