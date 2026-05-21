@@ -264,3 +264,38 @@ def demo_read_sql() -> None:
     merged = unit_sum.merge(df_products[["id", "name"]], left_on="product_id", right_on="id")
     for _, row in merged.iterrows():
         print(f"    {row['name']:<14}  {int(row['quantity'])} units")
+
+
+# ==============================================================
+# 6. Aggregations and Joins
+# ==============================================================
+# GROUP BY collapses rows that share a key column and applies
+# aggregate functions (SUM, AVG, COUNT) to the rest of the columns.
+# JOIN combines rows from orders and products where product_id = id.
+# Writing the aggregation in SQL is far more efficient than loading
+# both tables into Python and merging when the data is large.
+
+def demo_aggregations_joins() -> None:
+    engine, _, _ = _populated_engine()
+
+    sql = """
+        SELECT  p.name,
+                COUNT(o.id)                         AS num_orders,
+                SUM(o.quantity)                     AS total_qty,
+                ROUND(AVG(o.quantity), 2)           AS avg_qty,
+                ROUND(SUM(o.quantity * p.price), 2) AS revenue
+        FROM    orders   o
+        JOIN    products p ON p.id = o.product_id
+        GROUP BY p.name
+        ORDER BY revenue DESC
+    """
+    df    = pd.read_sql_query(sql, engine)
+    total = df["revenue"].sum()
+
+    print(f"\n  {'Product':<14} | {'Orders':>6} | {'Qty':>5} | {'Avg':>5} | {'Revenue':>10} | Share")
+    print(f"  {'-'*14}-+-{'-'*6}-+-{'-'*5}-+-{'-'*5}-+-{'-'*10}-+------")
+    for _, row in df.iterrows():
+        share = row["revenue"] / total * 100
+        print(f"  {row['name']:<14} | {int(row['num_orders']):>6} | {int(row['total_qty']):>5} | "
+              f"{row['avg_qty']:>5.1f} | ${row['revenue']:>9,.2f} | {share:.1f}%")
+    print(f"  {'Total':<14}                                   ${total:>9,.2f}")
