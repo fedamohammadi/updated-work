@@ -1,0 +1,32 @@
+---
+title: "Sales Report: 2024-01 to 2024-03"
+author: "Automated Analytics"
+date: "2024-03-31"
+format: html
+---
+
+## Executive Summary
+
+Total revenue for 2024-01 to 2024-03 was **$115,065.73**.
+The top-performing product was **Laptop**.
+
+## Revenue by Product
+
+```{python}
+#| echo: false
+import pandas as pd
+df = pd.read_csv("sales.csv")
+df.groupby("product").agg({"revenue": "sum", "units": "sum"})
+```
+
+## Monthly Trend
+
+```{python}
+#| echo: false
+#| fig-cap: "Monthly revenue trend"
+import matplotlib.pyplot as plt
+df.groupby("month")["revenue"].sum().plot(marker="o")
+plt.ylabel("Revenue ($)")
+plt.tight_layout()
+plt.show()
+```
