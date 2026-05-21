@@ -275,3 +275,75 @@ def demo_transform_api_data() -> None:
     print(f"\n  Posts per user after merge:")
     for _, row in df_merged.sort_values("posts", ascending=False).iterrows():
         print(f"  {row['name']:<8}  ({row['company']:<8})  {row['posts']} post(s)")
+
+
+# ==============================================================
+# 7. Practical Example: Fetching and Analysing Posts
+# ==============================================================
+
+def demo_api_analysis() -> None:
+    posts = fetch_json(f"{BASE_URL}/posts", MOCK_POSTS)
+    users = fetch_json(f"{BASE_URL}/users", MOCK_USERS)
+
+    df_posts = pd.DataFrame(posts)[["userId", "id", "title", "body"]]
+    df_posts["word_count"] = df_posts["body"].str.split().str.len()
+    df_posts["title_len"]  = df_posts["title"].str.len()
+
+    df_users = pd.json_normalize(users)[["id", "name", "company.name"]]
+    df_users.columns = ["userId", "author", "company"]
+
+    df = df_posts.merge(df_users, on="userId")
+
+    print(f"\n  Dataset: {len(df)} posts from {df['author'].nunique()} authors")
+    print(f"  Avg word count : {df['word_count'].mean():.1f} words per post body")
+    print(f"  Avg title length: {df['title_len'].mean():.1f} characters")
+
+    print(f"\n  Posts per author:")
+    summary = (df.groupby(["author", "company"])
+                 .agg(posts=("id", "count"), avg_words=("word_count", "mean"))
+                 .reset_index()
+                 .sort_values("posts", ascending=False))
+    for _, row in summary.iterrows():
+        print(f"  {row['author']:<8}  ({row['company']:<8})  "
+              f"{int(row['posts'])} post(s)   avg {row['avg_words']:.1f} words")
+
+    print(f"\n  Longest post titles:")
+    for _, row in df.nlargest(3, "title_len")[["title", "title_len"]].iterrows():
+        print(f"  [{row['title_len']:2d} chars] {row['title']}")
+
+    print(f"\n  Word count distribution:")
+    for lo, hi, lbl in [(1, 9, " 1-9"), (10, 19, "10-19"), (20, 29, "20-29"), (30, 999, " 30+")]:
+        cnt = int(((df["word_count"] >= lo) & (df["word_count"] <= hi)).sum())
+        bar = "#" * cnt
+        print(f"  {lbl:>5} words: {bar} ({cnt})")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. HTTP Basics: GET Requests")
+    demo_http_basics()
+
+    section("2. JSON: Parsing and Serialising")
+    demo_json()
+
+    section("3. The requests Library")
+    demo_requests_pattern()
+
+    section("4. Query Parameters and Headers")
+    demo_params_headers()
+
+    section("5. Error Handling: Status Codes and Timeouts")
+    demo_error_handling()
+
+    section("6. Transforming API Data into a DataFrame")
+    demo_transform_api_data()
+
+    section("7. Practical Example: Fetching and Analysing Posts")
+    demo_api_analysis()
+
+
+if __name__ == "__main__":
+    main()
