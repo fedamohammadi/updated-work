@@ -206,3 +206,44 @@ def demo_params_headers() -> None:
     print(f"\n  Posts for userId=2 (limit 3):")
     for p in posts[:3]:
         print(f"    id={p['id']}  {p['title'][:52]}")
+
+
+# ==============================================================
+# 5. Error Handling: Status Codes and Timeouts
+# ==============================================================
+# HTTP status code families: 2xx = success, 3xx = redirect,
+# 4xx = client error (bad request, unauthorised, not found),
+# 5xx = server error. urllib raises HTTPError for 4xx/5xx responses;
+# URLError wraps network-level failures (DNS, refused connections).
+# Always set timeout= — without it a request can hang indefinitely.
+
+def demo_error_handling() -> None:
+    def safe_fetch(url: str) -> tuple:
+        try:
+            with urllib.request.urlopen(url, timeout=4) as resp:
+                return resp.status, "OK"
+        except urllib.error.HTTPError as exc:
+            return exc.code, exc.reason
+        except urllib.error.URLError as exc:
+            return 0, f"Network error: {exc.reason}"
+        except Exception as exc:
+            return 0, str(exc)[:40]
+
+    test_cases = [
+        (f"{BASE_URL}/posts/1",               "valid resource   "),
+        (f"{BASE_URL}/nonexistent",           "404 not found   "),
+        ("https://does.not.exist.invalid/api", "DNS failure     "),
+    ]
+
+    print(f"\n  Status code families:")
+    print(f"    2xx - success (200 OK, 201 Created, 204 No Content)")
+    print(f"    3xx - redirect (301 Moved, 302 Found)")
+    print(f"    4xx - client error (400 Bad Request, 401, 403, 404)")
+    print(f"    5xx - server error (500 Internal, 503 Unavailable)")
+
+    print(f"\n  Live request outcomes:")
+    print(f"  {'Label':<20} | {'Status':>6} | Outcome")
+    print(f"  {'-'*20}-+-{'-'*6}-+-{'-'*25}")
+    for url, label in test_cases:
+        code, msg = safe_fetch(url)
+        print(f"  {label:<20} | {str(code):>6} | {msg[:30]}")
