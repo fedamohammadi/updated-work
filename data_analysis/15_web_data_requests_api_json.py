@@ -141,3 +141,68 @@ def demo_json() -> None:
 
     avg = sum(data["scores"]) / len(data["scores"])
     print(f"\n  Avg score: {avg:.1f}  |  User active: {data['user']['active']}")
+
+
+# ==============================================================
+# 3. The requests Library
+# ==============================================================
+# requests.get() wraps urllib with a cleaner API. Response.json()
+# auto-parses the body without a separate json.loads() call.
+# params= appends query parameters to the URL with proper encoding.
+# Session() reuses a TCP connection pool and lets you set default
+# headers once, reducing overhead across many requests to one host.
+
+def demo_requests_pattern() -> None:
+    url   = f"{BASE_URL}/posts"
+    posts = fetch_json(f"{url}?userId=1&_limit=5", MOCK_POSTS[:5])
+
+    print(f"\n  With urllib (used in this file for portability):")
+    print(f"    req = urllib.request.Request(url, headers={{...}})")
+    print(f"    with urllib.request.urlopen(req, timeout=5) as resp:")
+    print(f"        data = json.loads(resp.read().decode())")
+
+    print(f"\n  Equivalent with requests (simpler API):")
+    print(f"    import requests")
+    print(f"    r = requests.get('{url}', params={{'userId': 1, '_limit': 5}})")
+    print(f"    posts = r.json()         # auto-parses JSON body")
+    print(f"    print(r.status_code)     # 200")
+    print(f"    print(r.elapsed)         # response time")
+
+    print(f"\n  Posts for userId=1 (first 5):")
+    for p in posts[:5]:
+        print(f"    id={p['id']}  {p['title'][:52]}")
+
+
+# ==============================================================
+# 4. Query Parameters and Headers
+# ==============================================================
+# Query parameters filter or page API responses — they appear after
+# ? in the URL as key=value pairs joined by &. urllib.parse.urlencode()
+# builds this string safely from a dict (handles special characters).
+# Headers carry metadata: Accept, Authorization (Bearer tokens), and
+# Content-Type. Never hard-code secrets — read from environment vars.
+
+def demo_params_headers() -> None:
+    import os
+
+    params  = {"userId": 2, "_limit": 3, "_sort": "id", "_order": "asc"}
+    encoded = urllib.parse.urlencode(params)
+    url     = f"{BASE_URL}/posts?{encoded}"
+    posts   = fetch_json(url, [p for p in MOCK_POSTS if p["userId"] == 2][:3])
+
+    print(f"\n  URL with encoded params:")
+    print(f"  {url}")
+
+    print(f"\n  Common request headers:")
+    print(f"    Accept        : application/json")
+    print(f"    Authorization : Bearer <token>   # os.getenv('API_TOKEN')")
+    print(f"    Content-Type  : application/json # for POST / PUT bodies")
+    print(f"    User-Agent    : MyApp/1.0")
+
+    print(f"\n  Building headers in code:")
+    print(f"    headers = {{'Accept': 'application/json',")
+    print(f"               'Authorization': 'Bearer ' + os.getenv('API_TOKEN', '')}}")
+
+    print(f"\n  Posts for userId=2 (limit 3):")
+    for p in posts[:3]:
+        print(f"    id={p['id']}  {p['title'][:52]}")
