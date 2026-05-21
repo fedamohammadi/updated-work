@@ -78,3 +78,66 @@ def fetch_json(url: str, fallback) -> object:
             return json.loads(resp.read().decode())
     except Exception:
         return fallback
+
+
+# ==============================================================
+# 1. HTTP Basics: GET Requests
+# ==============================================================
+# urllib.request.urlopen() opens a URL and returns an HTTP response.
+# resp.status is the numeric status code: 200 = OK, 404 = not found.
+# resp.read() returns the raw bytes of the body; .decode() makes it
+# a string. The Accept header tells the server what content type to
+# return. urllib is part of the standard library — no installation needed.
+
+def demo_http_basics() -> None:
+    url = f"{BASE_URL}/posts/1"
+    try:
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            status       = resp.status
+            content_type = resp.headers.get("Content-Type", "n/a")
+            post         = json.loads(resp.read().decode())
+        live = True
+    except Exception:
+        status, content_type, post, live = 0, "application/json", MOCK_POSTS[0], False
+
+    print(f"\n  URL          : {url}")
+    print(f"  Status       : {status if live else '(offline -- mock data)'}")
+    print(f"  Content-Type : {content_type}")
+    print(f"\n  Response body (parsed):")
+    for k, v in post.items():
+        print(f"    {k:<10}: {str(v)[:60]}")
+
+
+# ==============================================================
+# 2. JSON: Parsing and Serialising
+# ==============================================================
+# json.loads() decodes a JSON string into Python objects: objects
+# become dicts, arrays become lists, true/false become bool.
+# json.dumps() does the reverse. indent= pretty-prints the output.
+# ensure_ascii=False preserves non-ASCII characters (accented letters,
+# CJK). sort_keys=True produces consistent output across Python runs.
+
+def demo_json() -> None:
+    raw = """{
+        "user":   {"id": 7, "name": "Alice", "active": true},
+        "scores": [95, 88, 72, 100],
+        "meta":   {"pages": 3, "total": 4}
+    }"""
+    data = json.loads(raw)
+
+    print(f"\n  Parsed types from JSON:")
+    print(f"    data['user']   -> {type(data['user']).__name__}: {data['user']}")
+    print(f"    data['scores'] -> {type(data['scores']).__name__}: {data['scores']}")
+    print(f"    data['meta']   -> {type(data['meta']).__name__}: {data['meta']}")
+
+    data["scores"].append(91)
+    data["user"]["active"] = False
+    serialised = json.dumps(data, indent=2, sort_keys=True, ensure_ascii=True)
+
+    print(f"\n  Re-serialised with indent=2, sort_keys=True:")
+    for line in serialised.splitlines():
+        print(f"  {line}")
+
+    avg = sum(data["scores"]) / len(data["scores"])
+    print(f"\n  Avg score: {avg:.1f}  |  User active: {data['user']['active']}")
