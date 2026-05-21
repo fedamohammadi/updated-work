@@ -299,3 +299,79 @@ def demo_aggregations_joins() -> None:
         print(f"  {row['name']:<14} | {int(row['num_orders']):>6} | {int(row['total_qty']):>5} | "
               f"{row['avg_qty']:>5.1f} | ${row['revenue']:>9,.2f} | {share:.1f}%")
     print(f"  {'Total':<14}                                   ${total:>9,.2f}")
+
+
+# ==============================================================
+# 7. Practical Example: E-Commerce Analysis Report
+# ==============================================================
+
+def demo_ecommerce_report() -> None:
+    engine, _, _ = _populated_engine()
+
+    sql_summary = """
+        SELECT  p.name,
+                COUNT(o.id)                         AS orders,
+                SUM(o.quantity)                     AS units,
+                ROUND(SUM(o.quantity * p.price), 2) AS revenue
+        FROM    orders o JOIN products p ON p.id = o.product_id
+        GROUP BY p.name
+        ORDER BY revenue DESC
+    """
+    sql_monthly = """
+        SELECT  substr(o.date, 1, 7)               AS month,
+                ROUND(SUM(o.quantity * p.price), 2) AS revenue
+        FROM    orders o JOIN products p ON p.id = o.product_id
+        GROUP BY month
+        ORDER BY month
+    """
+    df_s = pd.read_sql_query(sql_summary, engine)
+    df_m = pd.read_sql_query(sql_monthly, engine)
+
+    total   = df_s["revenue"].sum()
+    top     = df_s.iloc[0]
+    months  = df_m.shape[0]
+    mom_avg = df_m["revenue"].pct_change().dropna().mean() * 100
+
+    print(f"\n  -- E-Commerce Report -----------------------------------------------")
+    print(f"  Total revenue : ${total:>10,.2f}  over {months} months")
+    print(f"  Top product   : {top['name']} (${top['revenue']:,.2f})")
+    print(f"  Avg MoM growth: {mom_avg:+.1f}%")
+    print(f"\n  Product breakdown:")
+    for _, row in df_s.iterrows():
+        share = row["revenue"] / total * 100
+        bar   = "#" * int(share / 2)
+        print(f"  {row['name']:<14}  ${row['revenue']:>8,.2f}  ({share:4.1f}%)  {bar}")
+    print(f"\n  Monthly revenue:")
+    for _, row in df_m.iterrows():
+        print(f"  {row['month']}  ${row['revenue']:>8,.2f}")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. sqlite3 Basics")
+    demo_sqlite3_basics()
+
+    section("2. SQLAlchemy Engine")
+    demo_engine()
+
+    section("3. Schema Definition: MetaData and Table")
+    demo_schema_definition()
+
+    section("4. CRUD Operations with SQLAlchemy Core")
+    demo_crud()
+
+    section("5. Reading SQL into pandas")
+    demo_read_sql()
+
+    section("6. Aggregations and Joins")
+    demo_aggregations_joins()
+
+    section("7. Practical Example: E-Commerce Analysis Report")
+    demo_ecommerce_report()
+
+
+if __name__ == "__main__":
+    main()
