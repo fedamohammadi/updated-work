@@ -147,3 +147,92 @@ def demo_markdown_tables() -> None:
     print(f"\n  Table preview:")
     for line in md_table.splitlines():
         print(f"  {line}")
+
+
+# ==============================================================
+# 3. string.Template: Dynamic Report Sections
+# ==============================================================
+# string.Template uses $variable or ${variable} placeholders.
+# safe_substitute() fills known keys and leaves unknown ones intact
+# — safer than substitute() which raises KeyError for missing keys.
+# A $$ in the template produces a literal $ in the output, which
+# is needed for currency values inside a Markdown template string.
+
+def demo_string_template() -> None:
+    df      = make_sales_df()
+    total   = df["revenue"].sum()
+    top     = df.groupby("product")["revenue"].sum().idxmax()
+    avg_mgn = df["margin"].mean() * 100
+    months  = df["month"].nunique()
+
+    tmpl = string.Template(textwrap.dedent("""\
+        ## Executive Summary -- $period
+
+        | Metric           | Value         |
+        |------------------|---------------|
+        | Total Revenue    | $$$total      |
+        | Top Product      | $top_product  |
+        | Avg Margin       | $avg_margin%  |
+        | Months Covered   | $months       |
+
+        Sales were driven by strong demand for $top_product throughout
+        $period. Gross margins averaged $avg_margin% across the product mix.
+    """))
+
+    filled = tmpl.safe_substitute(
+        period="Q1 2024",
+        total=f"{total:,.2f}",
+        top_product=top,
+        avg_margin=f"{avg_mgn:.1f}",
+        months=months,
+    )
+
+    path = os.path.join(REPORT_DIR, "16_03_template.md")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(filled)
+
+    print(f"\n  Template placeholders: period, total, top_product, avg_margin, months")
+    print(f"\n  Rendered output:")
+    for line in filled.splitlines():
+        print(f"  {line}")
+
+
+# ==============================================================
+# 4. pandas HTML Styling
+# ==============================================================
+# df.style returns a Styler that attaches CSS to a DataFrame.
+# .format() sets number display per column (%, $, commas).
+# .highlight_max() and .highlight_min() colour extreme values.
+# .background_gradient() applies a continuous colour scale.
+# .to_html() renders the styled table as an HTML string that
+# can be embedded directly in a report or opened in a browser.
+
+def demo_html_styling() -> None:
+    df = make_sales_df()
+    pivot = (df.groupby("product")
+               .agg(Revenue=("revenue", "sum"),
+                    Units=("units", "sum"),
+                    Margin=("margin", "mean"))
+               .round({"Revenue": 2, "Margin": 3})
+               .sort_values("Revenue", ascending=False))
+
+    styled = (pivot.style
+              .format({"Revenue": "${:,.2f}", "Units": "{:,}", "Margin": "{:.1%}"})
+              .highlight_max(subset=["Revenue", "Units"], color="#c8f7c5")
+              .highlight_min(subset=["Margin"],           color="#f7c8c8")
+              .background_gradient(subset=["Revenue"],    cmap="Blues", vmin=0)
+              .set_caption("Q1 2024 Product Sales -- styled HTML table"))
+
+    html = f"<html><body>\n{styled.to_html()}\n</body></html>"
+    path = os.path.join(REPORT_DIR, "16_04_styled.html")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    print(f"\n  Styled HTML saved to: {path}  (open in a browser to view)")
+    print(f"\n  Styler methods applied:")
+    print(f"    .format()              - currency, commas, and percentage formatting")
+    print(f"    .highlight_max()       - green for highest revenue and units")
+    print(f"    .highlight_min()       - red for lowest margin")
+    print(f"    .background_gradient() - blue gradient scaled to revenue")
+    print(f"\n  Plain pivot table:")
+    print(pivot.to_string())
