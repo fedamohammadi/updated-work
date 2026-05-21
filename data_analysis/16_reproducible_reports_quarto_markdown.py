@@ -360,3 +360,117 @@ def demo_generate_qmd() -> None:
     print(f"\n  File content:")
     for line in qmd.splitlines():
         print(f"  {line}")
+
+
+# ==============================================================
+# 7. Practical Example: Auto-Generated Analysis Report
+# ==============================================================
+
+def demo_full_report() -> None:
+    df = make_sales_df()
+
+    pivot   = (df.groupby("product")
+                 .agg(revenue=("revenue", "sum"),
+                      units=("units", "sum"),
+                      margin=("margin", "mean"))
+                 .sort_values("revenue", ascending=False)
+                 .round({"revenue": 2, "margin": 3})
+                 .reset_index())
+    monthly = (df.groupby("month")["revenue"]
+                 .sum()
+                 .reset_index()
+                 .rename(columns={"revenue": "revenue"}))
+
+    total   = pivot["revenue"].sum()
+    top     = pivot.iloc[0]["product"]
+    mom_pct = monthly["revenue"].pct_change().dropna().mean() * 100
+
+    product_table = _df_to_md(
+        pivot,
+        {"revenue": lambda v: f"${v:,.2f}", "margin": lambda v: f"{v:.1%}"},
+    )
+    monthly_table = _df_to_md(
+        monthly,
+        {"revenue": lambda v: f"${v:,.2f}"},
+    )
+
+    report = textwrap.dedent(f"""\
+        # Q1 2024 Sales Analysis Report
+
+        *Generated automatically -- re-run the script to refresh all figures.*
+
+        ## Executive Summary
+
+        | Metric           | Value            |
+        |------------------|------------------|
+        | Total Revenue    | ${total:,.2f}    |
+        | Top Product      | {top}            |
+        | Avg MoM Growth   | {mom_pct:+.1f}%  |
+        | Products         | {pivot.shape[0]} |
+        | Months           | {monthly.shape[0]} |
+
+        ## Revenue by Product
+
+        {product_table}
+
+        ## Monthly Revenue Trend
+
+        {monthly_table}
+
+        ## Notes
+
+        - Data covers {df['month'].nunique()} months and {df['product'].nunique()} products.
+        - Margin values are gross margin estimates.
+        - Render to HTML with: `quarto render 16_06_report.qmd`
+    """)
+
+    path = os.path.join(REPORT_DIR, "16_07_full_report.md")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(report)
+
+    print(f"\n  Full report saved to: {path}")
+    print(f"\n  Report summary:")
+    print(f"    Total revenue : ${total:,.2f}")
+    print(f"    Top product   : {top}")
+    print(f"    Avg MoM growth: {mom_pct:+.1f}%")
+    print(f"\n  Product revenue table:")
+    for line in product_table.splitlines():
+        print(f"  {line}")
+    print(f"\n  Monthly revenue:")
+    for line in monthly_table.splitlines():
+        print(f"  {line}")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    os.makedirs(REPORT_DIR, exist_ok=True)
+
+    section("1. Markdown Basics")
+    demo_markdown_basics()
+
+    section("2. Markdown Tables from DataFrames")
+    demo_markdown_tables()
+
+    section("3. string.Template: Dynamic Report Sections")
+    demo_string_template()
+
+    section("4. pandas HTML Styling")
+    demo_html_styling()
+
+    section("5. Quarto Concepts: YAML and Python Chunks")
+    demo_quarto_concepts()
+
+    section("6. Generating a .qmd File from Python")
+    demo_generate_qmd()
+
+    section("7. Practical Example: Auto-Generated Analysis Report")
+    demo_full_report()
+
+    print(f"\n  All reports saved to: {REPORT_DIR}")
+
+
+if __name__ == "__main__":
+    main()
