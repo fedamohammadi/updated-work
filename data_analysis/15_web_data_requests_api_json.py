@@ -247,3 +247,31 @@ def demo_error_handling() -> None:
     for url, label in test_cases:
         code, msg = safe_fetch(url)
         print(f"  {label:<20} | {str(code):>6} | {msg[:30]}")
+
+
+# ==============================================================
+# 6. Transforming API Data into a DataFrame
+# ==============================================================
+# API responses are often nested JSON: a user object has a nested
+# company sub-object. pd.json_normalize() flattens one level of
+# nesting and names the columns using dot notation (company.name).
+# Once flat, standard DataFrame operations (merge, groupby, sort)
+# apply. Rename columns after normalising to keep names concise.
+
+def demo_transform_api_data() -> None:
+    users = fetch_json(f"{BASE_URL}/users", MOCK_USERS)
+    posts = fetch_json(f"{BASE_URL}/posts", MOCK_POSTS)
+
+    df_users = pd.json_normalize(users)[["id", "name", "email", "company.name", "address.city"]]
+    df_users.columns = ["userId", "name", "email", "company", "city"]
+
+    df_posts    = pd.DataFrame(posts)[["userId", "id", "title"]]
+    post_counts = df_posts.groupby("userId").size().reset_index(name="posts")
+    df_merged   = df_users.merge(post_counts, on="userId")
+
+    print(f"\n  Users flattened from nested JSON ({df_users.shape[0]} rows):")
+    print(df_users[["name", "email", "company", "city"]].to_string(index=False))
+
+    print(f"\n  Posts per user after merge:")
+    for _, row in df_merged.sort_values("posts", ascending=False).iterrows():
+        print(f"  {row['name']:<8}  ({row['company']:<8})  {row['posts']} post(s)")
