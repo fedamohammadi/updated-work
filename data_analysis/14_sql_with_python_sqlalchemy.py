@@ -164,3 +164,29 @@ def demo_engine() -> None:
     print(f"\n  Products priced above $100:")
     for row in rows:
         print(f"    {row.name:<14}  ${row.price:.2f}")
+
+
+# ==============================================================
+# 3. Schema Definition: MetaData and Table
+# ==============================================================
+# MetaData is a registry that maps table names to Table objects.
+# Column types (Integer, String, Float) are database-agnostic;
+# SQLAlchemy translates them to the dialect's native type on DDL.
+# ForeignKey("products.id") declares a referential integrity link.
+# metadata.create_all(engine) issues CREATE TABLE for every
+# registered table that does not yet exist in the target database.
+
+def demo_schema_definition() -> None:
+    meta, products, orders = _build_schema()
+    engine = create_engine("sqlite:///:memory:", echo=False)
+    meta.create_all(engine)
+
+    print(f"\n  Registered tables: {list(meta.tables.keys())}")
+    print(f"\n  products columns:")
+    for col in products.columns:
+        print(f"    {col.name:<14} {str(col.type):<16}  pk={col.primary_key}  nullable={col.nullable}")
+    print(f"\n  orders columns:")
+    for col in orders.columns:
+        fk = list(col.foreign_keys)
+        fk_str = f"  -> {next(iter(fk)).target_fullname}" if fk else ""
+        print(f"    {col.name:<14} {str(col.type):<16}  pk={col.primary_key}{fk_str}")
