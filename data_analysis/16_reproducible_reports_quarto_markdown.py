@@ -236,3 +236,127 @@ def demo_html_styling() -> None:
     print(f"    .background_gradient() - blue gradient scaled to revenue")
     print(f"\n  Plain pivot table:")
     print(pivot.to_string())
+
+
+# ==============================================================
+# 5. Quarto Concepts: YAML and Python Chunks
+# ==============================================================
+# Quarto (.qmd) is a markdown-based publishing system. A .qmd file
+# has three parts: (1) YAML frontmatter between --- that sets the
+# title, author, and output format; (2) Markdown prose; (3) fenced
+# Python chunks (```{python}) that execute on render. Running
+# "quarto render report.qmd" converts the file to HTML, PDF, or Word
+# with plots and DataFrame outputs embedded automatically.
+
+def demo_quarto_concepts() -> None:
+    example = textwrap.dedent("""\
+        ---
+        title: "Sales Analysis Q1 2024"
+        author: "Analytics Team"
+        date: "2024-03-31"
+        format:
+          html:
+            toc: true
+            code-fold: true
+          pdf:
+            documentclass: article
+        ---
+
+        ## Overview
+
+        This report summarises Q1 sales across five product categories.
+
+        ```{python}
+        #| echo: false
+        #| fig-cap: "Revenue by product"
+        import pandas as pd, matplotlib.pyplot as plt
+        df = pd.read_csv("sales.csv")
+        df.groupby("product")["revenue"].sum().sort_values().plot(kind="barh")
+        plt.xlabel("Revenue ($)")
+        plt.tight_layout()
+        plt.show()
+        ```
+
+        The chart confirms that Laptop generated the highest revenue.
+    """)
+
+    print(f"\n  .qmd file structure:")
+    for line in example.splitlines():
+        print(f"  {line}")
+    print(f"\n  Chunk options (# | prefix inside the chunk):")
+    print(f"    #| echo: false     - hide code, show output only")
+    print(f"    #| eval: false     - show code, skip execution")
+    print(f"    #| fig-cap: '...' - add a caption below the figure")
+    print(f"\n  Render commands:")
+    print(f"    quarto render report.qmd")
+    print(f"    quarto render report.qmd --to pdf")
+    print(f"    quarto preview report.qmd   # live-reload in browser")
+
+
+# ==============================================================
+# 6. Generating a .qmd File from Python
+# ==============================================================
+# Writing the .qmd source from a Python script lets you parameterise
+# the report -- swap date ranges, data sources, or filters without
+# manually editing the document each time. string.Template fills
+# computed summary values into the frontmatter and prose; the code
+# chunks are left as static Python that quarto executes on render.
+
+def demo_generate_qmd() -> None:
+    df      = make_sales_df()
+    total   = df["revenue"].sum()
+    top     = df.groupby("product")["revenue"].sum().idxmax()
+    months  = sorted(df["month"].unique())
+    period  = f"{months[0]} to {months[-1]}"
+
+    tmpl = string.Template(textwrap.dedent("""\
+        ---
+        title: "Sales Report: $period"
+        author: "Automated Analytics"
+        date: "$date"
+        format: html
+        ---
+
+        ## Executive Summary
+
+        Total revenue for $period was **$$$total**.
+        The top-performing product was **$top_product**.
+
+        ## Revenue by Product
+
+        ```{python}
+        #| echo: false
+        import pandas as pd
+        df = pd.read_csv("sales.csv")
+        df.groupby("product").agg({"revenue": "sum", "units": "sum"})
+        ```
+
+        ## Monthly Trend
+
+        ```{python}
+        #| echo: false
+        #| fig-cap: "Monthly revenue trend"
+        import matplotlib.pyplot as plt
+        df.groupby("month")["revenue"].sum().plot(marker="o")
+        plt.ylabel("Revenue ($)")
+        plt.tight_layout()
+        plt.show()
+        ```
+    """))
+
+    qmd = tmpl.safe_substitute(
+        period=period,
+        date="2024-03-31",
+        total=f"{total:,.2f}",
+        top_product=top,
+    )
+
+    path = os.path.join(REPORT_DIR, "16_06_report.qmd")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(qmd)
+
+    print(f"\n  Generated .qmd file: {path}")
+    print(f"  To render: quarto render {os.path.basename(path)}")
+    print(f"\n  File content:")
+    for line in qmd.splitlines():
+        print(f"  {line}")
