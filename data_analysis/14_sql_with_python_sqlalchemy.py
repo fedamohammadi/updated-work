@@ -87,3 +87,80 @@ def _populated_engine():
         conn.execute(sa_insert(orders),   _make_orders())
         conn.commit()
     return engine, products, orders
+
+
+# ==============================================================
+# 1. sqlite3 Basics
+# ==============================================================
+# sqlite3 is Python's built-in interface to SQLite databases.
+# A Connection holds the database; a Cursor runs SQL statements.
+# executemany() sends one parameterised statement with many rows
+# in a single call — faster than looping over execute().
+# The ? placeholder prevents SQL injection by binding values
+# separately rather than formatting them into the SQL string.
+
+def demo_sqlite3_basics() -> None:
+    conn = sqlite3.connect(":memory:")
+    cur  = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE products (
+            id    INTEGER PRIMARY KEY,
+            name  TEXT    NOT NULL,
+            price REAL    NOT NULL,
+            stock INTEGER NOT NULL
+        )
+    """)
+    cur.executemany("INSERT INTO products VALUES (?, ?, ?, ?)", PRODUCTS)
+    conn.commit()
+
+    cur.execute("SELECT name, price, stock FROM products ORDER BY price DESC")
+    rows = cur.fetchall()
+
+    print(f"\n  {'Product':<14} | {'Price':>9} | {'Stock':>5}")
+    print(f"  {'-'*14}-+-{'-'*9}-+-{'-'*5}")
+    for name, price, stock in rows:
+        print(f"  {name:<14} | ${price:>8.2f} | {stock:>5}")
+
+    cur.execute("SELECT COUNT(*), AVG(price), SUM(stock) FROM products")
+    cnt, avg_p, total_stock = cur.fetchone()
+    print(f"\n  Count: {cnt}  |  Avg price: ${avg_p:.2f}  |  Total stock: {int(total_stock)}")
+    conn.close()
+
+
+# ==============================================================
+# 2. SQLAlchemy Engine
+# ==============================================================
+# create_engine() returns an Engine that manages a connection pool.
+# The URL format is "dialect+driver://user:pass@host/dbname".
+# "sqlite:///:memory:" opens an in-process SQLite database.
+# engine.connect() yields a Connection context manager; text()
+# wraps a raw SQL string so :param placeholders can be bound
+# safely without string formatting or SQL injection risk.
+
+def demo_engine() -> None:
+    engine = create_engine("sqlite:///:memory:", echo=False)
+
+    with engine.connect() as conn:
+        conn.execute(text("""
+            CREATE TABLE products (
+                id INTEGER PRIMARY KEY, name TEXT,
+                price REAL, stock INTEGER
+            )
+        """))
+        conn.execute(
+            text("INSERT INTO products VALUES (:id, :name, :price, :stock)"),
+            _product_dicts(),
+        )
+        conn.commit()
+
+        result = conn.execute(
+            text("SELECT name, price FROM products WHERE price > :lo ORDER BY price DESC"),
+            {"lo": 100},
+        )
+        rows = result.fetchall()
+
+    print(f"\n  Dialect: {engine.dialect.name}  |  Driver: {engine.dialect.driver}")
+    print(f"\n  Products priced above $100:")
+    for row in rows:
+        print(f"    {row.name:<14}  ${row.price:.2f}")
