@@ -190,3 +190,77 @@ def demo_schema_definition() -> None:
         fk = list(col.foreign_keys)
         fk_str = f"  -> {next(iter(fk)).target_fullname}" if fk else ""
         print(f"    {col.name:<14} {str(col.type):<16}  pk={col.primary_key}{fk_str}")
+
+
+# ==============================================================
+# 4. CRUD Operations with SQLAlchemy Core
+# ==============================================================
+# The Core expression API builds SQL as Python objects, not strings.
+# sa_select(table).where(table.c.col == val) uses Python operators
+# to build a WHERE clause. sa_update().values(col=new_val) generates
+# the SET clause. sa_delete().where() removes matching rows.
+# All statements execute inside a connection; commit() persists changes.
+
+def demo_crud() -> None:
+    meta, products, orders = _build_schema()
+    engine = create_engine("sqlite:///:memory:", echo=False)
+    meta.create_all(engine)
+
+    with engine.connect() as conn:
+        conn.execute(sa_insert(products), _product_dicts())
+        conn.commit()
+
+        cheap = conn.execute(
+            sa_select(products).where(products.c.price < 100)
+        ).fetchall()
+        print(f"\n  Products under $100:")
+        for r in cheap:
+            print(f"    {r.name:<14}  ${r.price:.2f}")
+
+        conn.execute(
+            sa_update(products)
+            .where(products.c.name == "Webcam")
+            .values(price=54.99, stock=75)
+        )
+        conn.commit()
+        webcam = conn.execute(
+            sa_select(products.c.price, products.c.stock)
+            .where(products.c.name == "Webcam")
+        ).fetchone()
+        print(f"\n  Webcam after update: price=${webcam.price:.2f}  stock={webcam.stock}")
+
+        conn.execute(sa_delete(products).where(products.c.id == 3))
+        conn.commit()
+        remaining = conn.execute(
+            sa_select(func.count()).select_from(products)
+        ).scalar()
+        print(f"\n  Rows remaining after deleting id=3: {remaining}")
+
+
+# ==============================================================
+# 5. Reading SQL into pandas
+# ==============================================================
+# pd.read_sql_query(sql, con) executes a SQL string and returns a
+# DataFrame whose column names match the SELECT list (or AS aliases).
+# The con argument accepts a SQLAlchemy engine or connection.
+# This workflow is powerful: use SQL for joining and filtering where
+# the database is fast, then pandas for reshaping and analysis.
+
+def demo_read_sql() -> None:
+    engine, products, orders = _populated_engine()
+
+    df_products = pd.read_sql_query("SELECT * FROM products ORDER BY price DESC", engine)
+    df_orders   = pd.read_sql_query("SELECT * FROM orders", engine)
+
+    print(f"\n  Products ({df_products.shape[0]} rows x {df_products.shape[1]} cols):")
+    print(df_products.to_string(index=False))
+
+    print(f"\n  Orders shape: {df_orders.shape}")
+    print(f"\n  Units ordered per product:")
+    unit_sum = (df_orders.groupby("product_id")["quantity"]
+                          .sum()
+                          .sort_values(ascending=False)
+                          .reset_index())
+    merged = unit_sum.merge(df_products[["id", "name"]], left_on="product_id", right_on="id")
+    for _, row in merged.iterrows():
+        print(f"    {row['name']:<14}  {int(row['quantity'])} units")
