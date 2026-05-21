@@ -64,3 +64,86 @@ def _df_to_md(df: pd.DataFrame, fmt: dict = None) -> str:
                                  for j, c in enumerate(cols)) + " |"
               for i in range(len(display))]
     return "\n".join([header, sep] + rows)
+
+
+# ==============================================================
+# 1. Markdown Basics
+# ==============================================================
+# Markdown is a lightweight markup language that renders to HTML.
+# # = h1, ## = h2, **text** = bold, *text* = italic, - = bullet.
+# Fenced code blocks use triple backticks with an optional language
+# tag for syntax highlighting. Generating .md files from Python
+# embeds computed values directly in prose — the core idea behind
+# reproducible reports: run the script, get an updated document.
+
+def demo_markdown_basics() -> None:
+    md = textwrap.dedent("""\
+        # Sales Analysis Report
+
+        Generated automatically by Python. Re-run the script to refresh.
+
+        ## Key Findings
+
+        - Total Q1 revenue exceeded **$50,000** across all products.
+        - The **Laptop** category led all products by revenue share.
+        - Average gross margin was *32%* across the product mix.
+
+        ## Code Example
+
+        ```python
+        df = pd.read_sql_query("SELECT * FROM sales", engine)
+        summary = df.groupby("product")["revenue"].sum().sort_values()
+        ```
+
+        > **Tip:** Pair this script with Quarto to render HTML or PDF output.
+    """)
+
+    path = os.path.join(REPORT_DIR, "16_01_basics.md")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(md)
+
+    print(f"\n  Markdown elements written to: {path}")
+    print(f"    # / ##     - h1 and h2 headings")
+    print(f"    **bold**   - strong emphasis")
+    print(f"    *italic*   - regular emphasis")
+    print(f"    - item     - unordered list bullet")
+    print(f"    ``` block  - fenced code block with language tag")
+    print(f"    > quote    - blockquote for callouts")
+    print(f"\n  First 5 lines of output:")
+    for line in md.splitlines()[:5]:
+        print(f"    {line}")
+
+
+# ==============================================================
+# 2. Markdown Tables from DataFrames
+# ==============================================================
+# A Markdown pipe table uses | to delimit columns and :--- for
+# alignment. Building it manually avoids the optional tabulate
+# dependency. The helper _df_to_md() measures column widths from
+# the data and header, then formats each row to match. These tables
+# render correctly in GitHub, VS Code preview, and Quarto HTML.
+
+def demo_markdown_tables() -> None:
+    df = make_sales_df()
+    pivot = (df.groupby("product")
+               .agg(Revenue=("revenue", "sum"),
+                    Units=("units", "sum"),
+                    Margin=("margin", "mean"))
+               .round({"Revenue": 2, "Margin": 3})
+               .sort_values("Revenue", ascending=False)
+               .reset_index())
+
+    md_table = _df_to_md(
+        pivot,
+        {"Revenue": lambda v: f"${v:,.2f}", "Margin": lambda v: f"{v:.1%}"},
+    )
+
+    content = f"# Q1 2024 Product Sales Summary\n\n{md_table}\n"
+    path    = os.path.join(REPORT_DIR, "16_02_tables.md")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    print(f"\n  Markdown pipe table saved to: {path}")
+    print(f"\n  Table preview:")
+    for line in md_table.splitlines():
+        print(f"  {line}")
